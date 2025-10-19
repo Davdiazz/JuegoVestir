@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Fashion Studio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: white;
+            overflow: hidden;
+        }
+
+        .game-container {
+            display: grid;
+            grid-template-columns: 280px 1fr 280px;
+            height: 100vh;
+            gap: 0;
+        }
+
+        @media (max-width: 1024px) {
+            .game-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr auto;
+            }
+            .sidebar {
+                max-height: 200px;
+            }
+        }
+
+        .sidebar {
+            background: rgba(15, 15, 35, 0.95);
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar.right {
+            border-right: none;
+            border-left: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 10px;
+        }
+
+        .category {
+            margin-bottom: 25px;
+        }
+
+        .category-title {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            padding: 12px 15px;
+            border-radius: 10px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 0.95em;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .items-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .clothing-item {
+            aspect-ratio: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .clothing-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, transparent, rgba(102, 126, 234, 0.1));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .clothing-item:hover::before {
+            opacity: 1;
+        }
+
+        .clothing-item:hover {
+            transform: scale(1.05);
+            border-color: #667eea;
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .clothing-item.selected {
+            border-color: #764ba2;
+            background: rgba(118, 75, 162, 0.2);
+            box-shadow: 0 0 25px rgba(118, 75, 162, 0.6);
+        }
+
+        .item-icon {
+            font-size: 2em;
+            margin-bottom: 5px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        }
+
+        .item-label {
+            font-size: 0.7em;
+            text-align: center;
+            opacity: 0.8;
+        }
+
+        .color-swatch {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .main-stage {
+            background: linear-gradient(180deg, #0f0f23 0%, #1a1a2e 100%);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stage-header {
+            padding: 20px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stage-header h1 {
+            font-size: 2em;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 5px;
+        }
+
+        .stage-header p {
+            opacity: 0.7;
+            font-size: 0.9em;
+        }
+
+        .viewer-container {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #avatarFrame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: transparent;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .loading-overlay.hidden {
+            display: none;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            margin-top: 20px;
+            font-size: 1.2em;
+        }
+
+        .controls {
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-top: 2px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 25px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1em;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #434343, #000000);
+        }
+
+        .gender-switch {
+            display: flex;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 5px;
+            border-radius: 25px;
+        }
+
+        .gender-btn {
+            padding: 10px 25px;
+            background: transparent;
+            border: none;
+            color: white;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .gender-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        .remove-item {
+            background: rgba(255, 0, 0, 0.1) !important;
+            border-color: rgba(255, 0, 0, 0.3) !important;
+        }
+
+        .remove-item .item-icon {
+            color: #ff4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- Sidebar Izquierdo -->
+        <div class="sidebar">
+            <div class="category">
+                <div class="category-title">👤 GÉNERO</div>
+                <div class="gender-switch">
+                    <button class="gender-btn active" onclick="changeGender('masculine')">Hombre</button>
+                    <button class="gender-btn" onclick="changeGender('feminine')">Mujer</button>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-title">🎨 PIEL</div>
+                <div class="items-grid" id="skinTones"></div>
+            </div>
+
+            <div class="category">
+                <div class="category-title">💇 CABELLO</div>
+                <div class="items-grid" id="hairStyles"></div>
+            </div>
+
+            <div class="category">
+                <div class="category-title">🎨 COLOR CABELLO</div>
+                <div class="items-grid" id="hairColors"></div>
+            </div>
+        </div>
+
+        <!-- Escenario Principal -->
+        <div class="main-stage">
+            <div class="stage-header">
+                <h1>✨ 3D Fashion Studio ✨</h1>
+                <p>Crea tu avatar 3D personalizado con estilo profesional</p>
+            </div>
+
+            <div class="viewer-container">
+                <iframe id="avatarFrame" allow="camera *; microphone *"></iframe>
+                <div class="loading-overlay" id="loadingOverlay">
+                    <div class="spinner"></div>
+                    <div class="loading-text">Cargando avatar 3D...</div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn" onclick="randomizeAvatar()">
+                    🎲 Aleatorio
+                </button>
+                <button class="btn btn-secondary" onclick="resetAvatar()">
+                    🔄 Reiniciar
+                </button>
+                <button class="btn" onclick="downloadAvatar()">
+                    💾 Exportar
+                </button>
+            </div>
+        </div>
+
+        <!-- Sidebar Derecho -->
+        <div class="sidebar right">
+            <div class="category">
+                <div class="category-title">👕 OUTFIT</div>
+                <div class="items-grid" id="outfits"></div>
+            </div>
+
+            <div class="category">
+                <div class="category-title">👔 TOP</div>
+                <div class="items-grid" id="tops"></div>
+            </div>
+
+            <div class="category">
+                <div class="category-title">👖 BOTTOM</div>
+                <div class="items-grid" id="bottoms"></div>
+            </div>
+
+            <div class="category">
+                <div class="category-title">👟 CALZADO</div>
+                <div class="items-grid" id="footwear"></div>
+            </div>
+
+            <div class="category">
+                <div class="category-title">👓 ACCESORIOS</div>
+                <div class="items-grid" id="accessories"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuración del avatar
+        let avatarConfig = {
+            bodyType: 'fullbody',
+            gender: 'masculine',
+            skinColor: 'f9d2b1',
+            hairStyle: 'ShortHair',
+            hairColor: '4a312c',
+            outfit: 'Casual',
+            top: 'Shirt',
+            bottom: 'Jeans',
+            footwear: 'Sneakers',
+            facialHair: 'None',
+            glasses: 'None'
+        };
+
+        // Datos de personalización
+        const customizationData = {
+            skinTones: [
+                { name: 'Claro', value: 'f9d2b1', emoji: '👶🏻' },
+                { name: 'Medio Claro', value: 'f3c79e', emoji: '👶🏼' },
+                { name: 'Medio', value: 'd8a077', emoji: '👶🏽' },
+                { name: 'Medio Oscuro', value: 'a97854', emoji: '👶🏾' },
+                { name: 'Oscuro', value: '6d503c', emoji: '👶🏿' }
+            ],
+            hairStyles: [
+                { name: 'Corto', value: 'ShortHair', emoji: '💇‍♂️' },
+                { name: 'Mediano', value: 'MediumHair', emoji: '💇' },
+                { name: 'Largo', value: 'LongHair', emoji: '💇‍♀️' },
+                { name: 'Rapado', value: 'Buzz', emoji: '👨‍🦲' },
+                { name: 'Rizado', value: 'Curly', emoji: '👨‍🦱' },
+                { name: 'Afro', value: 'Afro', emoji: '👨' }
+            ],
+            hairColors: [
+                { name: 'Negro', value: '000000', color: '#000000' },
+                { name: 'Castaño', value: '4a312c', color: '#4a312c' },
+                { name: 'Rubio', value: 'd6b370', color: '#d6b370' },
+                { name: 'Pelirrojo', value: 'a55728', color: '#a55728' },
+                { name: 'Gris', value: '838383', color: '#838383' },
+                { name: 'Blanco', value: 'e8e1e1', color: '#e8e1e1' },
+                { name: 'Rosa', value: 'ff69b4', color: '#ff69b4' },
+                { name: 'Azul', value: '4169e1', color: '#4169e1' },
+                { name: 'Morado', value: '9370db', color: '#9370db' }
+            ],
+            outfits: [
+                { name: 'Casual', value: 'Casual', emoji: '👕' },
+                { name: 'Formal', value: 'Formal', emoji: '🤵' },
+                { name: 'Deportivo', value: 'Sport', emoji: '🏃' },
+                { name: 'Elegante', value: 'Elegant', emoji: '💼' },
+                { name: 'Urbano', value: 'Urban', emoji: '🧥' },
+                { name: 'Verano', value: 'Summer', emoji: '🩳' }
+            ],
+            tops: [
+                { name: 'Camiseta', value: 'Shirt', emoji: '👕' },
+                { name: 'Camisa', value: 'ButtonShirt', emoji: '👔' },
+                { name: 'Sudadera', value: 'Hoodie', emoji: '🧥' },
+                { name: 'Blazer', value: 'Blazer', emoji: '🤵' },
+                { name: 'Tank Top', value: 'Tank', emoji: '🎽' },
+                { name: 'Jersey', value: 'Sweater', emoji: '🧶' }
+            ],
+            bottoms: [
+                { name: 'Jeans', value: 'Jeans', emoji: '👖' },
+                { name: 'Pantalón', value: 'Pants', emoji: '👔' },
+                { name: 'Shorts', value: 'Shorts', emoji: '🩳' },
+                { name: 'Falda', value: 'Skirt', emoji: '👗' },
+                { name: 'Leggings', value: 'Leggings', emoji: '🧘' },
+                { name: 'Deportivo', value: 'SportPants', emoji: '🏃' }
+            ],
+            footwear: [
+                { name: 'Tenis', value: 'Sneakers', emoji: '👟' },
+                { name: 'Zapatos', value: 'Shoes', emoji: '👞' },
+                { name: 'Botas', value: 'Boots', emoji: '👢' },
+                { name: 'Tacones', value: 'Heels', emoji: '👠' },
+                { name: 'Sandalias', value: 'Sandals', emoji: '👡' },
+                { name: 'Deportivos', value: 'Sports', emoji: '⚽' }
+            ],
+            accessories: [
+                { name: 'Sin Accesorios', value: 'None', emoji: '✕' },
+                { name: 'Lentes', value: 'Glasses', emoji: '👓' },
+                { name: 'Gafas Sol', value: 'Sunglasses', emoji: '🕶️' },
+                { name: 'Gorra', value: 'Cap', emoji: '🧢' },
+                { name: 'Sombrero', value: 'Hat', emoji: '🎩' },
+                { name: 'Bufanda', value: 'Scarf', emoji: '🧣' }
+            ]
+        };
+
+        // Generar URL del avatar usando Ready Player Me
+        function generateAvatarURL() {
+            const baseURL = 'https://models.readyplayer.me/';
+            const avatarId = generateAvatarId();
+            return `${baseURL}${avatarId}.glb?morphTargets=ARKit&textureAtlas=1024`;
+        }
+
+        // Generar ID único para el avatar
+        function generateAvatarId() {
+            const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+            let id = '';
+            for (let i = 0; i < 24; i++) {
+                id += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return id;
+        }
+
+        // Actualizar iframe del avatar
+        function updateAvatarViewer() {
+            const loading = document.getElementById('loadingOverlay');
+            loading.classList.remove('hidden');
+
+            // Usar Ready Player Me con configuración personalizada
+            const gender = avatarConfig.gender === 'masculine' ? 'male' : 'female';
+            const url = `https://demo.readyplayer.me/avatar?frameApi&bodyType=${avatarConfig.bodyType}&gender=${gender}`;
+            
+            const iframe = document.getElementById('avatarFrame');
+            iframe.src = url;
+
+            // Ocultar loading después de cargar
+            iframe.onload = () => {
+                setTimeout(() => {
+                    loading.classList.add('hidden');
+                }, 1500);
+            };
+        }
+
+        // Cambiar género
+        function changeGender(gender) {
+            avatarConfig.gender = gender;
+            document.querySelectorAll('.gender-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            updateAvatarViewer();
+        }
+
+        // Crear opciones de personalización
+        function createOptions(containerId, items, configKey) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            items.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'clothing-item';
+                if (item.value === 'None' || item.name === 'Sin Accesorios') {
+                    div.classList.add('remove-item');
+                }
+
+                if (item.color) {
+                    const swatch = document.createElement('div');
+                    swatch.className = 'color-swatch';
+                    swatch.style.background = item.color;
+                    div.appendChild(swatch);
+                } else {
+                    const icon = document.createElement('div');
+                    icon.className = 'item-icon';
+                    icon.textContent = item.emoji;
+                    div.appendChild(icon);
+
+                    const label = document.createElement('div');
+                    label.className = 'item-label';
+                    label.textContent = item.name;
+                    div.appendChild(label);
+                }
+
+                div.onclick = () => selectOption(container, div, configKey, item.value);
+                div.title = item.name;
+                container.appendChild(div);
+            });
+        }
+
+        // Seleccionar opción
+        function selectOption(container, element, configKey, value) {
+            container.querySelectorAll('.clothing-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            element.classList.add('selected');
+            avatarConfig[configKey] = value;
+            updateAvatarViewer();
+        }
+
+        // Avatar aleatorio
+        function randomizeAvatar() {
+            const random = (arr) => arr[Math.floor(Math.random() * arr.length)].value;
+
+            avatarConfig.skinColor = random(customizationData.skinTones);
+            avatarConfig.hairStyle = random(customizationData.hairStyles);
+            avatarConfig.hairColor = random(customizationData.hairColors);
+            avatarConfig.outfit = random(customizationData.outfits);
+            avatarConfig.top = random(customizationData.tops);
+            avatarConfig.bottom = random(customizationData.bottoms);
+            avatarConfig.footwear = random(customizationData.footwear);
+
+            updateAvatarViewer();
+            initializeOptions();
+        }
+
+        // Reiniciar avatar
+        function resetAvatar() {
+            avatarConfig = {
+                bodyType: 'fullbody',
+                gender: 'masculine',
+                skinColor: 'f9d2b1',
+                hairStyle: 'ShortHair',
+                hairColor: '4a312c',
+                outfit: 'Casual',
+                top: 'Shirt',
+                bottom: 'Jeans',
+                footwear: 'Sneakers',
+                facialHair: 'None',
+                glasses: 'None'
+            };
+            updateAvatarViewer();
+            initializeOptions();
+        }
+
+        // Descargar avatar
+        function downloadAvatar() {
+            alert('💡 Para descargar tu avatar 3D:\n\n1. Completa la personalización en Ready Player Me\n2. Tu avatar se guardará automáticamente\n3. Puedes exportarlo en formato GLB para usar en juegos y aplicaciones 3D');
+        }
+
+        // Inicializar opciones
+        function initializeOptions() {
+            createOptions('skinTones', customizationData.skinTones, 'skinColor');
+            createOptions('hairStyles', customizationData.hairStyles, 'hairStyle');
+            createOptions('hairColors', customizationData.hairColors, 'hairColor');
+            createOptions('outfits', customizationData.outfits, 'outfit');
+            createOptions('tops', customizationData.tops, 'top');
+            createOptions('bottoms', customizationData.bottoms, 'bottom');
+            createOptions('footwear', customizationData.footwear, 'footwear');
+            createOptions('accessories', customizationData.accessories, 'glasses');
+        }
+
+        // Inicializar
+        window.onload = () => {
+            initializeOptions();
+            updateAvatarViewer();
+        };
+    </script>
+</body>
+</html>
